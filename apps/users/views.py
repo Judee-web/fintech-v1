@@ -1,28 +1,25 @@
-from django.shortcuts import render
-
-# Create your views here.
-from rest_framework import generics
-from .models import User
-from .serializers import UserSerializer
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from rest_framework.views import APIView
+from rest_framework import generics, permissions
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model  # ✅ Fix
+from .serializers import UserSerializer, RegisterSerializer
 
-class UserListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated, IsAdminUser],  # Ensure admin access
+User = get_user_model()  # ✅ Fix
 
+# Register API
+class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
+    serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
+
+# Login API (JWT)
+class LoginView(generics.GenericAPIView):
     serializer_class = UserSerializer
 
-
-
-
-class UserProfileView(APIView):
-    def get(self, request):
-        # Example response
-        data = {
-            "user": "John Doe",
-            "email": "johndoe@example.com"
-        }
-        return Response(data, status=status.HTTP_200_OK)
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        })
